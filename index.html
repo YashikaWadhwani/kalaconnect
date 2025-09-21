@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KalaConnect - Full E-Commerce Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 1rem;
+            max-width: 500px;
+            width: 90%;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay:not(.hidden) .modal-content {
+            transform: scale(1);
+        }
+        #notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: opacity 0.5s, transform 0.5s;
+            z-index: 100;
+        }
+        .product-card {
+            cursor: pointer;
+        }
+        .filter-btn.active {
+            background-color: #2563eb;
+            color: white;
+            border-color: #2563eb;
+        }
+        #record-story-btn.recording, .record-btn.recording {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+
+    <!-- Notification -->
+    <div id="notification" class="hidden bg-green-500 text-white px-6 py-3 rounded-full shadow-lg">
+        <p id="notification-text"></p>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#" class="text-2xl font-bold text-gray-900">कलाConnect</a>
+            <div class="flex items-center space-x-4">
+                 <div id="user-info" class="hidden items-center">
+                    <span class="font-semibold" data-translate-key="welcome">Welcome</span>, <span id="username-display"></span>!
+                </div>
+                <select id="app-language-select" class="bg-gray-100 border-gray-300 rounded-md text-sm">
+                    <option value="en">English</option>
+                    <option value="hi">हिन्दी</option>
+                </select>
+                <button id="cart-button" class="relative">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                    <span id="cart-count" class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                </button>
+                <button id="auth-button" data-translate-key="login_signup" class="bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition">Login / Sign Up</button>
+            </div>
+        </nav>
+    </header>
+
+    <div class="container mx-auto p-4 md:p-8">
+        <!-- Seller Dashboard (Hidden by default) -->
+        <section id="seller-dashboard" class="hidden bg-white p-6 md:p-8 rounded-2xl shadow-lg mb-12">
+            <h2 class="text-3xl font-bold text-center mb-8 text-gray-800" data-translate-key="artisan_dashboard">Artisan Dashboard</h2>
+            <div id="generator-section">
+                 <h3 class="text-2xl font-semibold text-center mb-6 text-gray-700" data-translate-key="create_new_listing">Create a New Product Listing</h3>
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="flex flex-col space-y-6">
+                        <div>
+                            <h4 class="text-xl font-semibold text-gray-800" data-translate-key="upload_craft">1. Upload Craft</h4>
+                            <div id="image-uploader" class="mt-2 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-500 transition">
+                                <input type="file" id="imageUpload" accept="image/*" class="hidden">
+                                <div id="image-preview-container" class="hidden mb-4"><img id="imagePreview" src="" alt="Image Preview" class="max-h-48 mx-auto rounded-lg"/></div>
+                                <p id="upload-text" data-translate-key="click_to_upload" class="text-gray-500">Click to upload</p>
+                            </div>
+                            <div id="enhancement-status" class="text-center text-sm text-blue-600 font-semibold mt-2 h-5"></div>
+                        </div>
+                        <h4 class="text-xl font-semibold text-gray-800" data-translate-key="describe_product">2. Describe Product</h4>
+                        <div class="space-y-4">
+                            <div class="relative">
+                                <textarea id="product-story-input" class="block w-full pr-12 px-3 py-2 border border-gray-300 rounded-md" rows="3" data-translate-key-placeholder="story_placeholder"></textarea>
+                                <button id="record-story-btn" class="record-btn absolute right-2 top-2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition" data-target-id="product-story-input">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                </button>
+                            </div>
+                            <div class="relative">
+                                <input type="text" id="productName" class="mt-1 block w-full pr-12 px-3 py-2 border border-gray-300 rounded-md" data-translate-key-placeholder="product_name_placeholder">
+                                <button class="record-btn absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition" data-target-id="productName">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                </button>
+                            </div>
+                             <div class="relative">
+                                <input type="text" id="materials" class="mt-1 block w-full pr-12 px-3 py-2 border border-gray-300 rounded-md" data-translate-key-placeholder="materials_placeholder">
+                                 <button class="record-btn absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition" data-target-id="materials">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                </button>
+                            </div>
+                             <div class="relative">
+                                <input type="text" id="craftType" class="mt-1 block w-full pr-12 px-3 py-2 border border-gray-300 rounded-md" data-translate-key-placeholder="craft_type_placeholder">
+                                <button class="record-btn absolute right-2 top-1/2 -translate-y-1/2 p-2 bg-red-500 text-white rounded-full hover:bg-red-600 transition" data-target-id="craftType">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
+                                </button>
+                            </div>
+                             <div>
+                                <label for="story-tone" class="block text-sm font-medium text-gray-700" data-translate-key="choose_story_tone">Choose a Story Tone</label>
+                                <select id="story-tone" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md">
+                                    <option value="heritage" data-translate-key="tone_heritage">Heritage-Rich</option>
+                                    <option value="luxury" data-translate-key="tone_luxury">Luxury & Elegance</option>
+                                    <option value="modern" data-translate-key="tone_modern">Minimalist & Modern</option>
+                                    <option value="festive" data-translate-key="tone_festive">Festive & Vibrant</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button id="generateBtn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition" data-translate-key="generate_content">✨ Generate Content</button>
+                    </div>
+                    <div id="output-container" class="flex flex-col space-y-6 hidden">
+                        <h4 class="text-xl font-semibold text-gray-800" data-translate-key="ai_generated_content">3. AI-Generated Content</h4>
+                        <div id="loader" class="flex justify-center items-center hidden"><div class="loader"></div></div>
+                        <div id="generated-content" class="space-y-4 hidden">
+                            <div class="p-4 bg-gray-100 rounded-lg"><h5 class="font-semibold text-lg mb-2" data-translate-key="product_description">Product Description</h5><p id="productDescription" class="text-gray-600"></p></div>
+                            <div class="p-4 bg-gray-100 rounded-lg"><h5 class="font-semibold text-lg mb-2" data-translate-key="seo_keywords">Suggested SEO Keywords</h5><p id="seoKeywords" class="text-gray-600 italic"></p></div>
+                            <div><label for="price" class="block text-sm font-medium text-gray-700" data-translate-key="set_price">4. Set Price (₹)</label><input type="number" id="price" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md" data-translate-key-placeholder="price_placeholder"></div>
+                            <button id="listProductBtn" class="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition" data-translate-key="list_on_marketplace">🛒 List on Marketplace</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Marketplace Section -->
+        <section id="marketplace-section" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg">
+            <div class="text-center mb-8">
+                <h2 class="text-3xl font-bold text-gray-800" data-translate-key="marketplace_title">KalaConnect Marketplace</h2>
+                <p class="text-gray-600 mt-2" data-translate-key="shop_by_story">Shop by story</p>
+                <div id="filter-container" class="mt-4 flex flex-wrap justify-center gap-2">
+                    <!-- Filter buttons will be inserted here -->
+                </div>
+            </div>
+            <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"></div>
+        </section>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal-overlay hidden"><div class="modal-content"><h2 class="text-2xl font-bold mb-4 text-center" data-translate-key="welcome_to_kalaconnect">Welcome to KalaConnect</h2><div class="flex border-b mb-4"><button id="login-tab" class="flex-1 py-2 font-semibold border-b-2 border-blue-500 text-blue-500" data-translate-key="login">Login</button><button id="signup-tab" class="flex-1 py-2 font-semibold text-gray-500" data-translate-key="signup">Sign Up</button></div><div id="auth-form-container"><div class="space-y-4 mb-6"><input type="email" id="auth-email" class="w-full px-3 py-2 border border-gray-300 rounded-md" data-translate-key-placeholder="email_placeholder"><input type="password" id="auth-password" class="w-full px-3 py-2 border border-gray-300 rounded-md" data-translate-key-placeholder="password_placeholder"></div><p class="text-center text-gray-600 mb-4" data-translate-key="i_am_a">I am a...</p><div class="flex justify-center space-x-4 mb-6"><button id="role-customer" class="px-4 py-2 rounded-lg border-2 border-blue-500 bg-blue-500 text-white" data-translate-key="customer">Customer</button><button id="role-artisan" class="px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-600" data-translate-key="artisan">Artisan</button></div><button id="auth-action-button" class="w-full bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition">Login as Customer</button><button id="cancel-auth-button" class="w-full mt-2 bg-gray-200 text-gray-800 font-semibold px-4 py-2 rounded-lg hover:bg-gray-300 transition" data-translate-key="cancel">Cancel</button></div></div></div>
+
+    <!-- Cart Modal -->
+    <div id="cart-modal" class="modal-overlay hidden"><div class="modal-content"><div class="flex justify-between items-center mb-6"><h2 class="text-2xl font-bold" data-translate-key="your_cart">Your Cart</h2><button id="close-cart-button" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button></div><div id="cart-items-container" class="mb-6 max-h-64 overflow-y-auto"></div><div class="border-t pt-4"><div class="flex justify-between items-center font-bold text-xl"><span data-translate-key="total">Total</span><span id="cart-total">₹0</span></div><button id="checkout-button" class="w-full mt-4 bg-green-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-700 transition disabled:bg-gray-400" data-translate-key="proceed_to_checkout" disabled>Proceed to Checkout</button></div></div></div>
+
+    <!-- Checkout Summary Modal -->
+    <div id="checkout-modal" class="modal-overlay hidden"><div class="modal-content"><h2 class="text-2xl font-bold mb-4" data-translate-key="checkout_summary">Checkout Summary</h2><p class="text-gray-600 mb-6" data-translate-key="thank_you_order">Thank you for your order! Here is a summary of your items:</p><div id="checkout-summary-container" class="mb-6 max-h-64 overflow-y-auto border-t border-b py-4"></div><div class="flex justify-between items-center font-bold text-xl mb-6"><span data-translate-key="grand_total">Grand Total</span><span id="checkout-grand-total">₹0</span></div><button id="close-checkout-button" class="w-full bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition" data-translate-key="close">Close</button></div></div>
+    
+    <!-- Product Details Modal -->
+    <div id="product-details-modal" class="modal-overlay hidden"><div class="modal-content !max-w-3xl"><div class="flex justify-end"><button id="close-product-details-button" class="text-gray-500 hover:text-gray-800 text-3xl">&times;</button></div><div class="grid grid-cols-1 md:grid-cols-2 gap-8"><img id="details-img" src="" alt="Product Image" class="w-full h-auto object-cover rounded-lg"><div class="flex flex-col"><h2 id="details-name" class="text-3xl font-bold mb-2"></h2><p id="details-craft" class="text-gray-500 mb-4"></p><div class="flex items-center space-x-2 mb-4"><button id="listen-story-btn" class="p-2 bg-blue-500 text-white rounded-full hover:bg-blue-600 transition"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clip-rule="evenodd" /></svg></button><span class="text-sm font-medium" data-translate-key="listen_to_story">Listen to the Story</span></div><p id="details-desc" class="text-gray-700 flex-grow mb-4"></p><div class="flex justify-between items-center"><p id="details-price" class="text-2xl font-bold"></p><button id="details-add-to-cart-btn" class="bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-blue-700 transition" data-translate-key="add_to_cart">Add to Cart</button></div></div></div></div></div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- STATE ---
+        let user = null; 
+        let currentAuth = { action: 'login', role: 'customer' };
+        let marketplaceProducts = [];
+        let currentProduct = {};
+        const cart = [];
+        let productIdCounter = 0;
+        let currentAppLanguage = 'en';
+        let transcriptionInterval = null;
+
+        // --- TRANSLATIONS & I18N ---
+        const translations = {
+            en: {
+                welcome: "Welcome", login_signup: "Login / Sign Up", artisan_dashboard: "Artisan Dashboard", create_new_listing: "Create a New Product Listing",
+                upload_craft: "1. Upload Craft", click_to_upload: "Click to upload", describe_product: "2. Describe Product", choose_story_tone: "Choose a Story Tone",
+                tone_heritage: "Heritage-Rich", tone_luxury: "Luxury & Elegance", tone_modern: "Minimalist & Modern", tone_festive: "Festive & Vibrant",
+                generate_content: "✨ Generate Content", ai_generated_content: "3. AI-Generated Content",
+                product_description: "Product Description", seo_keywords: "Suggested SEO Keywords", set_price: "4. Set Price (₹)", list_on_marketplace: "🛒 List on Marketplace",
+                marketplace_title: "KalaConnect Marketplace", shop_by_story: "Shop by story", welcome_to_kalaconnect: "Welcome to KalaConnect", login: "Login", signup: "Sign Up",
+                i_am_a: "I am a...", customer: "Customer", artisan: "Artisan", cancel: "Cancel", your_cart: "Your Cart", total: "Total", proceed_to_checkout: "Proceed to Checkout",
+                checkout_summary: "Checkout Summary", thank_you_order: "Thank you for your order! Here is a summary of your items:", grand_total: "Grand Total", close: "Close",
+                listen_to_story: "Listen to the Story", add_to_cart: "Add to Cart", story_placeholder: "Type or record your product story here...",
+                product_name_placeholder: "e.g., Hand-painted Ceramic Vase", materials_placeholder: "e.g., Terracotta clay, Natural dyes", craft_type_placeholder: "e.g., Jaipur Blue Pottery",
+                price_placeholder: "e.g., 1500", email_placeholder: "Email Address", password_placeholder: "Password", all_stories_filter: "All Stories",
+                empty_cart: "Your cart is empty.", remove_from_cart: "Remove",
+                sim_recording: "Transcribing your story...", sim_story_captured: "Transcription complete!", sim_enhancing_image: "Enhancing image with AI...", sim_enhancement_complete: "Enhancement complete!",
+                sim_enhancement_failed: "Enhancement failed. Using original.",
+                alert_fill_fields: "Please fill in all fields and upload an image.", alert_valid_price: "Please enter a valid price.",
+                alert_tts_unsupported: "Sorry, your browser doesn't support text-to-speech.",
+                notification_added: 'Added "{itemName}" to cart!', notification_removed: 'Removed "{itemName}" from cart!', notification_already_in_cart: '"{itemName}" is already in your cart.',
+                notification_listed: '"{itemName}" has been listed!',
+            },
+            hi: {
+                welcome: "स्वागत है", login_signup: "लॉग इन / साइन अप", artisan_dashboard: "कारीगर डैशबोर्ड", create_new_listing: "एक नई उत्पाद सूची बनाएं",
+                upload_craft: "१. शिल्प अपलोड करें", click_to_upload: "अपलोड करने के लिए क्लिक करें", describe_product: "२. उत्पाद का वर्णन करें", choose_story_tone: "एक कहानी का स्वर चुनें",
+                tone_heritage: "विरासत-समृद्ध", tone_luxury: "विलासिता और लालित्य", tone_modern: "न्यूनतम और आधुनिक", tone_festive: "उत्सव और जीवंत",
+                generate_content: "✨ सामग्री उत्पन्न करें", ai_generated_content: "३. एआई-जनित सामग्री",
+                product_description: "उत्पाद विवरण", seo_keywords: "सुझाए गए एसईओ कीवर्ड", set_price: "४. मूल्य निर्धारित करें (₹)", list_on_marketplace: "🛒 बाज़ार में सूचीबद्ध करें",
+                marketplace_title: "कलाConnect मार्केटप्लेस", shop_by_story: "कहानी से खरीदारी करें", welcome_to_kalaconnect: "कलाConnect में आपका स्वागत है", login: "लॉग इन करें", signup: "साइन अप करें",
+                i_am_a: "मैं एक...", customer: "ग्राहक", artisan: "कारीगर", cancel: "रद्द करें", your_cart: "आपकी गाड़ी", total: "कुल", proceed_to_checkout: "चेकआउट के लिए आगे बढ़ें",
+                checkout_summary: "चेकआउट सारांश", thank_you_order: "आपके आदेश के लिए धन्यवाद! यहाँ आपके आइटम का सारांश है:", grand_total: "महा योग", close: "बंद करें",
+                listen_to_story: "कहानी सुनें", add_to_cart: "कार्ट में जोड़ें", story_placeholder: "अपनी उत्पाद कहानी यहाँ लिखें या रिकॉर्ड करें...",
+                product_name_placeholder: "उदा., हाथ से पेंट किया हुआ सिरेमिक फूलदान", materials_placeholder: "उदा., टेराकोटा मिट्टी, प्राकृतिक रंग", craft_type_placeholder: "उदा., जयपुर ब्लू पॉटरी",
+                price_placeholder: "उदा., 1500", email_placeholder: "ईमेल पता", password_placeholder: "पासवर्ड", all_stories_filter: "सभी कहानियाँ",
+                empty_cart: "आपकी गाड़ी खाली है।", remove_from_cart: "हटा दें",
+                sim_recording: "आपकी कहानी लिख रहे हैं...", sim_story_captured: "प्रतिलेखन पूरा हुआ!", sim_enhancing_image: "एआई के साथ छवि को बेहतर बनाया जा रहा है...", sim_enhancement_complete: "सुधार पूरा हुआ!",
+                sim_enhancement_failed: "सुधार विफल रहा। मूल का उपयोग किया जा रहा है।",
+                alert_fill_fields: "कृपया सभी फ़ील्ड भरें और एक छवि अपलोड करें।", alert_valid_price: "कृपया एक वैध मूल्य दर्ज करें।",
+                alert_tts_unsupported: "क्षमा करें, आपका ब्राउज़र टेक्स्ट-टू-स्पीच का समर्थन नहीं करता है।",
+                notification_added: '"{itemName}" कार्ट में जोड़ा गया!', notification_removed: '"{itemName}" कार्ट से हटा दिया गया!', notification_already_in_cart: '"{itemName}" पहले से ही आपके कार्ट में है।',
+                notification_listed: '"{itemName}" सूचीबद्ध किया गया है!',
+            }
+        };
+
+        const voiceInputSamples = {
+            en: { productName: "Handmade Clay Diya", materials: "River clay, natural colors", craftType: "Pottery", story: "This is a traditional diya, made by hand for the festival of lights. My family has been making these for generations." },
+            hi: { productName: "हस्तनिर्मित मिट्टी का दीया", materials: "नदी की मिट्टी, प्राकृतिक रंग", craftType: "मिट्टी के बर्तन", story: "यह एक पारंपरिक दीया है, जिसे रोशनी के त्योहार के लिए हाथ से बनाया गया है। मेरा परिवार पीढ़ियों से इन्हें बना रहा है।" }
+        };
+
+        // --- DUMMY DATA ---
+        function setupDummyData() {
+            const dummyProducts = [
+                { id: ++productIdCounter, name: 'Madhubani Painted Pot', materials: 'Terracotta, Acrylic Paint', craftType: 'Madhubani Painting', price: 1200, imageSrc: 'https://placehold.co/600x400/EAD8C0/5F4E3E?text=Madhubani+Pot', descriptions: {en: 'A beautifully hand-painted terracotta pot featuring traditional Madhubani motifs. Perfect as a decorative piece to add an ethnic touch to your home.', hi: 'पारंपरिक मधुबनी रूपांकनों से युक्त एक खूबसूरती से हस्त-चित्रित टेराकोटा का बर्तन। आपके घर में एक जातीय स्पर्श जोड़ने के लिए एक सजावटी टुकड़े के रूप में बिल्कुल सही।', ta: 'பாரம்பரிய மதுபானி உருவங்களைக் கொண்ட அழகாக கையால் வரையப்பட்ட டெரகோட்டா பானை. உங்கள் வீட்டிற்கு ஒரு இனத் தொடர்பைச் சேர்க்க ஒரு அலங்காரப் பொருளாக சரியானது.'}, tags: ['heritage', 'festive'] },
+                { id: ++productIdCounter, name: 'Handwoven Pashmina Shawl', materials: 'Pashmina Wool', craftType: 'Weaving', price: 8500, imageSrc: 'https://placehold.co/600x400/B6C7AA/49573A?text=Pashmina+Shawl', descriptions: {en: 'Experience the luxurious warmth of an authentic Pashmina shawl, handwoven by skilled artisans from the Himalayas. An heirloom piece of timeless elegance.', hi: 'हिमालय के कुशल कारीगरों द्वारा हाथ से बुनी गई एक प्रामाणिक पश्मीना शॉल की शानदार गर्मी का अनुभव करें। कालातीत लालित्य का एक विरासत टुकड़ा।', ta: 'இமயமலையின் திறமையான கைவினைஞர்களால் கையால் நெய்யப்பட்ட உண்மையான பஷ்மினா சால்வையின் ஆடம்பரமான அரவணைப்பை அனுபவிக்கவும். காலமற்ற நேர்த்தியின் ஒரு பாரம்பரிய துண்டு.'}, tags: ['luxury', 'heritage'] },
+            ];
+            marketplaceProducts.push(...dummyProducts);
+        }
+
+        // --- ELEMENT REFERENCES ---
+        const filterContainer = document.getElementById('filter-container');
+        const seoKeywords = document.getElementById('seoKeywords');
+        const storyTone = document.getElementById('story-tone');
+        const productStoryInput = document.getElementById('product-story-input');
+        const listenStoryBtn = document.getElementById('listen-story-btn');
+        const appLanguageSelect = document.getElementById('app-language-select');
+        const enhancementStatus = document.getElementById('enhancement-status');
+        const authButton = document.getElementById('auth-button');
+        const authModal = document.getElementById('auth-modal');
+        const loginTab = document.getElementById('login-tab');
+        const signupTab = document.getElementById('signup-tab');
+        const roleCustomer = document.getElementById('role-customer');
+        const roleArtisan = document.getElementById('role-artisan');
+        const authActionButton = document.getElementById('auth-action-button');
+        const cancelAuthButton = document.getElementById('cancel-auth-button');
+        const authEmail = document.getElementById('auth-email');
+        const authPassword = document.getElementById('auth-password');
+        const userInfo = document.getElementById('user-info');
+        const usernameDisplay = document.getElementById('username-display');
+        const sellerDashboard = document.getElementById('seller-dashboard');
+        const imageUploader = document.getElementById('image-uploader');
+        const imageUpload = document.getElementById('imageUpload');
+        const imagePreview = document.getElementById('imagePreview');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const uploadText = document.getElementById('upload-text');
+        const generateBtn = document.getElementById('generateBtn');
+        const outputContainer = document.getElementById('output-container');
+        const loader = document.getElementById('loader');
+        const generatedContent = document.getElementById('generated-content');
+        const listProductBtn = document.getElementById('listProductBtn');
+        const productGrid = document.getElementById('product-grid');
+        const productDetailsModal = document.getElementById('product-details-modal');
+        const closeProductDetailsButton = document.getElementById('close-product-details-button');
+        const detailsImg = document.getElementById('details-img');
+        const detailsName = document.getElementById('details-name');
+        const detailsCraft = document.getElementById('details-craft');
+        const detailsDesc = document.getElementById('details-desc');
+        const detailsPrice = document.getElementById('details-price');
+        const detailsAddToCartBtn = document.getElementById('details-add-to-cart-btn');
+        const cartButton = document.getElementById('cart-button');
+        const cartModal = document.getElementById('cart-modal');
+        const closeCartButton = document.getElementById('close-cart-button');
+        const cartCount = document.getElementById('cart-count');
+        const cartItemsContainer = document.getElementById('cart-items-container');
+        const cartTotal = document.getElementById('cart-total');
+        const checkoutButton = document.getElementById('checkout-button');
+        const checkoutModal = document.getElementById('checkout-modal');
+        const checkoutSummaryContainer = document.getElementById('checkout-summary-container');
+        const checkoutGrandTotal = document.getElementById('checkout-grand-total');
+        const closeCheckoutButton = document.getElementById('close-checkout-button');
+        const notification = document.getElementById('notification');
+        const notificationText = document.getElementById('notification-text');
+        
+        // --- I18N & UI FUNCTIONS ---
+        function setLanguage(lang) {
+            currentAppLanguage = lang;
+            document.querySelectorAll('[data-translate-key]').forEach(el => {
+                const key = el.dataset.translateKey;
+                if(el) el.textContent = translations[lang][key] || translations['en'][key];
+            });
+            document.querySelectorAll('[data-translate-key-placeholder]').forEach(el => {
+                const key = el.dataset.translateKeyPlaceholder;
+                 if(el) el.placeholder = translations[lang][key] || translations['en'][key];
+            });
+            renderFilters();
+            renderCart();
+            updateAuthModal();
+        }
+
+        function updateAuthUI() {
+            if (user) {
+                authButton.dataset.translateKey = 'logout';
+                authButton.classList.replace('bg-blue-600', 'bg-red-600');
+                authButton.classList.replace('hover:bg-blue-700', 'hover:bg-red-700');
+                userInfo.classList.remove('hidden');
+                usernameDisplay.textContent = user.name;
+                sellerDashboard.classList.toggle('hidden', user.role !== 'artisan');
+            } else {
+                authButton.dataset.translateKey = 'login_signup';
+                authButton.classList.replace('bg-red-600', 'bg-blue-600');
+                authButton.classList.replace('hover:bg-red-700', 'hover:bg-blue-700');
+                userInfo.classList.add('hidden');
+                sellerDashboard.classList.add('hidden');
+            }
+            authModal.classList.add('hidden');
+            setLanguage(currentAppLanguage);
+        }
+
+        function updateAuthModal() {
+            if(!authActionButton) return;
+            const actionText = translations[currentAppLanguage][currentAuth.action];
+            const roleText = translations[currentAppLanguage][currentAuth.role];
+            authActionButton.textContent = `${actionText} as ${roleText}`;
+            loginTab.classList.toggle('border-blue-500', currentAuth.action === 'login');
+            loginTab.classList.toggle('text-blue-500', currentAuth.action === 'login');
+            signupTab.classList.toggle('border-blue-500', currentAuth.action === 'signup');
+            signupTab.classList.toggle('text-blue-500', currentAuth.action === 'signup');
+            roleCustomer.classList.toggle('bg-blue-500', currentAuth.role === 'customer');
+            roleCustomer.classList.toggle('text-white', currentAuth.role === 'customer');
+            roleArtisan.classList.toggle('bg-blue-500', currentAuth.role === 'artisan');
+            roleArtisan.classList.toggle('text-white', currentAuth.role === 'artisan');
+        }
+
+        function showNotification(key, replacements = {}) {
+            let message = translations[currentAppLanguage][key];
+            for (const placeholder in replacements) {
+                message = message.replace(`{${placeholder}}`, replacements[placeholder]);
+            }
+            notificationText.textContent = message;
+            notification.classList.remove('hidden');
+            setTimeout(() => {
+                notification.classList.add('hidden')
+            }, 2500);
+        }
+
+        function renderCart() {
+            cartItemsContainer.innerHTML = '';
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = `<p class="text-gray-500">${translations[currentAppLanguage].empty_cart}</p>`;
+                checkoutButton.disabled = true;
+            } else {
+                checkoutButton.disabled = false;
+                cart.forEach(item => {
+                    const cartItem = document.createElement('div');
+                    cartItem.className = 'flex justify-between items-center mb-4';
+                    cartItem.innerHTML = `
+                        <div class="flex items-center">
+                            <img src="${item.imageSrc}" alt="${item.name}" class="w-16 h-16 object-cover rounded-md mr-4">
+                            <div>
+                                <h4 class="font-semibold">${item.name}</h4>
+                                <p class="text-gray-600">₹${item.price.toLocaleString('en-IN')}</p>
+                            </div>
+                        </div>
+                        <button data-product-id="${item.id}" class="remove-from-cart-btn text-red-500 hover:text-red-700 font-semibold">${translations[currentAppLanguage].remove_from_cart}</button>
+                    `;
+                    cartItemsContainer.appendChild(cartItem);
+                });
+            }
+            cartCount.textContent = cart.length;
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            cartTotal.textContent = `₹${total.toLocaleString('en-IN')}`;
+        }
+        
+        function renderMarketplace(filterTag = 'all') {
+            productGrid.innerHTML = '';
+            const filteredProducts = filterTag === 'all' ? marketplaceProducts : marketplaceProducts.filter(p => p.tags.includes(filterTag));
+            filteredProducts.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card bg-white rounded-lg shadow-md overflow-hidden transform hover:scale-105 transition-transform duration-300';
+                productCard.dataset.productId = product.id;
+                productCard.innerHTML = `
+                    <img src="${product.imageSrc}" alt="${product.name}" class="w-full h-56 object-cover pointer-events-none">
+                    <div class="p-4 pointer-events-none">
+                        <h3 class="text-lg font-semibold">${product.name}</h3>
+                        <p class="text-gray-500 text-sm mb-2">${product.craftType}</p>
+                        <div class="flex justify-between items-center">
+                            <p class="text-xl font-bold">₹${product.price.toLocaleString('en-IN')}</p>
+                        </div>
+                    </div>
+                `;
+                productGrid.appendChild(productCard);
+            });
+        }
+        
+        function renderFilters() {
+            const allTags = new Set(marketplaceProducts.flatMap(p => p.tags));
+            filterContainer.innerHTML = `<button class="filter-btn active px-4 py-2 rounded-full border-2 border-gray-300 text-gray-600" data-tag="all">${translations[currentAppLanguage].all_stories_filter}</button>`;
+            allTags.forEach(tag => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn px-4 py-2 rounded-full border-2 border-gray-300 text-gray-600';
+                btn.dataset.tag = tag;
+                btn.textContent = translations[currentAppLanguage][`tone_${tag}`] || tag;
+                filterContainer.appendChild(btn);
+            });
+        }
+
+        // --- CORE LOGIC FUNCTIONS ---
+        function handleAuthAction() {
+            const email = authEmail.value;
+            const password = authPassword.value;
+            if (!email || !password) {
+                alert('Please enter both email and password.');
+                return;
+            }
+            user = { role: currentAuth.role, name: email };
+            updateAuthUI();
+        }
+        
+        function addToCart(productId) {
+            const product = marketplaceProducts.find(p => p.id === productId);
+            if (product && !cart.find(p => p.id === productId)) {
+                cart.push(product);
+                renderCart();
+                showNotification('notification_added', { itemName: product.name });
+            } else if (cart.find(p => p.id === productId)) {
+                showNotification('notification_already_in_cart', { itemName: product.name });
+            }
+        }
+        
+        function removeFromCart(productId) {
+            const index = cart.findIndex(p => p.id === productId);
+            if (index > -1) {
+                const productName = cart[index].name;
+                cart.splice(index, 1);
+                renderCart();
+                showNotification('notification_removed', { itemName: productName });
+            }
+        }
+
+        function showCheckoutSummary() {
+            cartModal.classList.add('hidden');
+            checkoutSummaryContainer.innerHTML = '';
+            cart.forEach(item => {
+                const summaryItem = document.createElement('div');
+                summaryItem.className = 'flex justify-between items-center mb-2';
+                summaryItem.innerHTML = `<span>${item.name}</span><span class="font-semibold">₹${item.price.toLocaleString('en-IN')}</span>`;
+                checkoutSummaryContainer.appendChild(summaryItem);
+            });
+            const total = cart.reduce((sum, item) => sum + item.price, 0);
+            checkoutGrandTotal.textContent = `₹${total.toLocaleString('en-IN')}`;
+            checkoutModal.classList.remove('hidden');
+        }
+        
+        function resetGenerator() {
+            document.getElementById('productName').value = '';
+            document.getElementById('materials').value = '';
+            document.getElementById('craftType').value = '';
+            document.getElementById('price').value = '';
+            imageUpload.value = '';
+            imagePreviewContainer.classList.add('hidden');
+            uploadText.textContent = translations[currentAppLanguage].click_to_upload;
+            outputContainer.classList.add('hidden');
+            generatedContent.classList.add('hidden');
+            productStoryInput.value = '';
+            currentProduct = {};
+            enhancementStatus.textContent = '';
+        }
+        
+        function showProductDetails(productId) {
+            const product = marketplaceProducts.find(p => p.id === productId);
+            if (!product) return;
+            detailsImg.src = product.imageSrc;
+            detailsName.textContent = product.name;
+            detailsCraft.textContent = product.craftType;
+            const desc = product.descriptions[currentAppLanguage] || product.descriptions.en;
+            detailsDesc.textContent = desc;
+            detailsPrice.textContent = `₹${product.price.toLocaleString('en-IN')}`;
+            detailsAddToCartBtn.dataset.productId = product.id;
+            listenStoryBtn.dataset.storyText = desc;
+            listenStoryBtn.dataset.storyLang = currentAppLanguage;
+            productDetailsModal.classList.remove('hidden');
+        }
+
+        function generateAIContent(productName, materials, craftType, tone, lang, rawStory) {
+            const storyPrefix = rawStory ? `Based on the artisan's story: "${rawStory}"\n\n` : '';
+            const descriptions = {
+                en: {
+                    luxury: `Experience unparalleled elegance with the "${productName}." Meticulously crafted from the finest ${materials}, this exquisite piece embodies the pinnacle of ${craftType} artistry. A statement of sophisticated taste and timeless luxury.`,
+                    modern: `Clean lines meet traditional skill in the "${productName}." Fashioned from ${materials}, this piece offers a contemporary take on classic ${craftType}. Its minimalist aesthetic is perfect for the modern home.`,
+                    festive: `Celebrate with the vibrant energy of the "${productName}." Bursting with color and life, this piece, made from ${materials}, captures the joyous spirit of ${craftType}. The perfect addition to any festive occasion.`,
+                    heritage: `Discover the timeless beauty of our "${productName}," a masterpiece of traditional ${craftType}. Handcrafted with passion by skilled artisans, this piece is made from the finest ${materials}. Each detail tells a story of heritage and dedication.`
+                },
+                hi: {
+                    heritage: `हमारे "${productName}" की कालातीत सुंदरता की खोज करें, जो पारंपरिक ${craftType} की उत्कृष्ट कृति है। कुशल कारीगरों द्वारा जुनून से दस्तकारी, यह टुकड़ा बेहतरीन ${materials} से बना है। प्रत्येक विवरण विरासत और समर्पण की कहानी कहता है।`
+                },
+                ta: {
+                    heritage: `எங்கள் "${productName}" இன் காலமற்ற அழகைக் கண்டறியவும், இது பாரம்பரிய ${craftType} இன் தலைசிறந்த படைப்பாகும். திறமையான கைவினைஞர்களால் ஆர்வத்துடன் கையால் வடிவமைக்கப்பட்ட இந்த துண்டு சிறந்த ${materials} இலிருந்து தயாரிக்கப்படுகிறது. ஒவ்வொரு விவரமும் பாரம்பரியம் மற்றும் அர்ப்பணிப்பின் கதையைச் சொல்கிறது.`
+                }
+            };
+            const baseDescription = (descriptions[lang] && descriptions[lang][tone]) || descriptions['en'][tone];
+            const keywords = `${craftType}, handmade ${productName.split(' ').pop()}, ${materials.split(',')[0]}, Indian artisan`;
+            return { description: storyPrefix + baseDescription, keywords };
+        }
+        
+        function dataURLtoBlob(dataurl) {
+            var arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+                bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+            while(n--){
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], {type:mime});
+        }
+
+        // --- EVENT LISTENERS ---
+        appLanguageSelect.addEventListener('change', (e) => setLanguage(e.target.value));
+        
+        authButton.addEventListener('click', () => {
+            if (user) {
+                user = null;
+                updateAuthUI();
+            } else {
+                authModal.classList.remove('hidden');
+                updateAuthModal();
+            }
+        });
+
+        loginTab.addEventListener('click', () => { currentAuth.action = 'login'; updateAuthModal(); });
+        signupTab.addEventListener('click', () => { currentAuth.action = 'signup'; updateAuthModal(); });
+        roleCustomer.addEventListener('click', () => { currentAuth.role = 'customer'; updateAuthModal(); });
+        roleArtisan.addEventListener('click', () => { currentAuth.role = 'artisan'; updateAuthModal(); });
+        authActionButton.addEventListener('click', handleAuthAction);
+        cancelAuthButton.addEventListener('click', () => authModal.classList.add('hidden'));
+
+        cartButton.addEventListener('click', () => cartModal.classList.remove('hidden'));
+        closeCartButton.addEventListener('click', () => cartModal.classList.add('hidden'));
+        checkoutButton.addEventListener('click', showCheckoutSummary);
+        closeCheckoutButton.addEventListener('click', () => checkoutModal.classList.add('hidden'));
+        closeProductDetailsButton.addEventListener('click', () => productDetailsModal.classList.add('hidden'));
+        
+        detailsAddToCartBtn.addEventListener('click', (e) => {
+            const productId = parseInt(e.target.dataset.productId);
+            addToCart(productId);
+            productDetailsModal.classList.add('hidden');
+        });
+
+        document.body.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-from-cart-btn')) {
+                removeFromCart(parseInt(e.target.dataset.productId));
+            }
+            const card = e.target.closest('.product-card');
+            if (card) {
+                showProductDetails(parseInt(card.dataset.productId));
+            }
+        });
+
+        imageUploader.addEventListener('click', () => imageUpload.click());
+        imageUpload.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const originalSrc = e.target.result;
+                    imagePreview.src = originalSrc;
+                    imagePreviewContainer.classList.remove('hidden');
+                    uploadText.textContent = file.name;
+                    
+                    enhancementStatus.textContent = translations[currentAppLanguage].sim_enhancing_image;
+
+                    const blob = dataURLtoBlob(originalSrc);
+                    const formData = new FormData();
+                    formData.append('file', blob, file.name);
+
+                    // Using a public API for background removal. Note: This may be unstable.
+                    fetch('https://bg.remove.pics/api', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => {
+                        if (!response.ok) { throw new Error('API response not OK'); }
+                        return response.blob();
+                    })
+                    .then(resultBlob => {
+                        const enhancedSrc = URL.createObjectURL(resultBlob);
+                        imagePreview.src = enhancedSrc;
+                        currentProduct.imageSrc = enhancedSrc;
+                        enhancementStatus.textContent = translations[currentAppLanguage].sim_enhancement_complete;
+                    })
+                    .catch(error => {
+                        console.error('Image enhancement failed:', error);
+                        currentProduct.imageSrc = originalSrc; // Fallback to original
+                        enhancementStatus.textContent = translations[currentAppLanguage].sim_enhancement_failed;
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.querySelectorAll('.record-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                if (transcriptionInterval) clearInterval(transcriptionInterval);
+
+                const targetId = e.currentTarget.dataset.targetId;
+                const targetInput = document.getElementById(targetId);
+                const sampleKey = targetId.includes('story') ? 'story' : targetId.replace('product','').toLowerCase();
+                
+                e.currentTarget.classList.add('recording');
+                showNotification('sim_recording');
+                
+                const textToSimulate = voiceInputSamples[currentAppLanguage][sampleKey] || voiceInputSamples['en'][sampleKey];
+                const words = textToSimulate.split(' ');
+                targetInput.value = '';
+                let i = 0;
+
+                transcriptionInterval = setInterval(() => {
+                    if (i < words.length) {
+                        targetInput.value += (i > 0 ? ' ' : '') + words[i];
+                        i++;
+                    } else {
+                        clearInterval(transcriptionInterval);
+                        e.currentTarget.classList.remove('recording');
+                        showNotification('sim_story_captured');
+                    }
+                }, 200);
+            });
+        });
+
+        generateBtn.addEventListener('click', () => {
+            currentProduct.name = document.getElementById('productName').value;
+            currentProduct.materials = document.getElementById('materials').value;
+            currentProduct.craftType = document.getElementById('craftType').value;
+            currentProduct.tone = storyTone.value;
+            const rawStory = productStoryInput.value;
+
+            if (!currentProduct.name || !currentProduct.materials || !currentProduct.craftType || !currentProduct.imageSrc) {
+                showNotification('alert_fill_fields');
+                return;
+            }
+
+            outputContainer.classList.remove('hidden');
+            loader.classList.remove('hidden');
+            generatedContent.classList.add('hidden');
+
+            setTimeout(() => {
+                // Preview description is generated in the currently selected app language for the dashboard
+                const aiResponse = generateAIContent(currentProduct.name, currentProduct.materials, currentProduct.craftType, currentProduct.tone, currentAppLanguage, rawStory);
+                document.getElementById('productDescription').textContent = aiResponse.description;
+                seoKeywords.textContent = aiResponse.keywords;
+                loader.classList.add('hidden');
+                generatedContent.classList.remove('hidden');
+            }, 1500);
+        });
+
+        listProductBtn.addEventListener('click', () => {
+            const price = parseFloat(document.getElementById('price').value);
+            if (!price || price <= 0) {
+                showNotification('alert_valid_price');
+                return;
+            }
+            currentProduct.price = price;
+            currentProduct.id = ++productIdCounter;
+            currentProduct.tags = [currentProduct.tone];
+            currentProduct.descriptions = {};
+            
+            // Generate descriptions for all languages behind the scenes
+            ['en', 'hi', 'ta'].forEach(lang => {
+                currentProduct.descriptions[lang] = generateAIContent(currentProduct.name, currentProduct.materials, currentProduct.craftType, currentProduct.tone, lang, productStoryInput.value).description;
+            });
+
+            marketplaceProducts.push({ ...currentProduct });
+            renderMarketplace();
+            renderFilters();
+            showNotification('notification_listed', { itemName: currentProduct.name });
+            resetGenerator();
+        });
+
+        filterContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('filter-btn')) {
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                renderMarketplace(e.target.dataset.tag);
+            }
+        });
+        
+        listenStoryBtn.addEventListener('click', (e) => {
+            const textToSpeak = e.currentTarget.dataset.storyText;
+            const lang = e.currentTarget.dataset.storyLang;
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Cancel any previous speech
+                const utterance = new SpeechSynthesisUtterance(textToSpeak);
+                utterance.lang = lang;
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            } else {
+                showNotification('alert_tts_unsupported');
+            }
+        });
+
+        // --- INITIALIZATION ---
+        setupDummyData();
+        renderMarketplace();
+        renderFilters();
+        renderCart();
+        setLanguage('en'); // Set initial language
+    });
+    </script>
+</body>
+</html>
+
